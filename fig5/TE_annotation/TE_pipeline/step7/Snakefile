@@ -1,0 +1,52 @@
+#Use conda env /global/projectb/sandbox/plant/hybridum/software/exoxo
+
+
+import timeForTE
+
+rule all:
+	input:
+		"dNdSbyGene.txt"
+
+rule make_bedfile:
+	output:
+		"allfragments.bed"
+	run:
+		inF = open('{}/step6/allfragments.txt'.format(timeForTE.topdir), 'r')
+		read = inF.readlines()
+		inF.close()
+		chroms = []
+		starts = []
+		ends = []
+		names = []
+		for n in range(1, len(read)):
+			L = read[n].split('\t')
+			chroms.append(L[1])
+			starts.append(L[2])
+			ends.append(L[3])
+			names.append(L[0])
+		outF = open('allfragments.bed', 'w')
+		for n in range(len(names)):
+			outF.write('{}\t{}\t{}\t{}\n'.format(chroms[n], starts[n], ends[n], names[n]))
+		outF.close()
+
+rule make_master_fasta: #note the output file is not strand-aware
+	input:
+		"allfragments.bed"
+	output:
+		"allfragments.fasta"
+	run:
+		shell("bedtools getfasta -fi {}/{} -fo allfragments.fasta -bed allfragments.bed -name".format(timeForTE.topdir, timeForTE.unmasked_genome_file))
+
+rule make_LTR_fastas:
+	input:
+		"allfragments.fasta"
+	output:
+		"LTRs_paired/calcLTR_ages.py"
+	run:
+		shell( "cp {}/step6/allfragments.classified .".format(timeForTE.topdir) )
+		shell( "python3 prepare_LTRs_for_MAFFT.py" )
+		shell( "chmod +x LTRs_by_family/runmafft.sh" )
+		shell( "chmod +x LTRs_paired/runmafft.sh" )
+		shell( "chmod +x runEMBOSS.sh" )
+		shell( "mv runEMBOSS.sh LTRs_paired/" )
+		shell( "cp calcLTR_ages.py LTRs_paired/" )

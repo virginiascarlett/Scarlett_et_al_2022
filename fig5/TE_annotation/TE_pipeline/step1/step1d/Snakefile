@@ -1,0 +1,40 @@
+import timeForTE
+import os
+
+rule all:
+	input:
+		"runRepMod.sh"
+		#expand("RepMod{chrom}.sh", chrom=timeForTE.chromosomes)
+
+# rule splitgenome:
+# 	output:
+# 		"{}.{}.fasta".format(timeForTE.genome, timeForTE.chromosomes[-1])
+# 	run:
+# 		timeForTE.genome_to_chromosomes('/'.join((timeForTE.topdir, timeForTE.unmasked_genome_file)), timeForTE.genome)
+
+rule makedb:
+	#input:
+		#"{}.{}.fasta".format(timeForTE.genome, timeForTE.chromosomes[-1])
+	output:
+		"{}.nsq".format(timeForTE.genome)
+	run:
+		shell("cp {}/{} .".format(timeForTE.topdir, timeForTE.unmasked_genome_file))
+		shell("{}/RepeatModeler-open-1.0.11/BuildDatabase -name {} -engine ncbi {}".format(timeForTE.softwaredir, timeForTE.genome, timeForTE.unmasked_genome_file))
+
+
+rule make_batch_script:
+	input:
+		"{}.nsq".format(timeForTE.genome)
+	output:
+		"runRepMod.sh"
+	run:
+		#write_SBATCH(nodes, ntasks, cpus_per_task, time, mem, qos, mailtype, filename)
+		timeForTE.write_SBATCH('1', '1', '64', '72:00:00', '118G', timeForTE.qos_partial_node, 'end', 'runRepMod.sh')
+		with open('runRepMod.sh', 'a') as myfile:
+			myfile.write('\n')
+			myfile.write('export PATH=$PATH:/global/projectb/sandbox/plant/hybridum/software')
+			myfile.write('export PATH=$PATH:/global/projectb/sandbox/plant/hybridum/software/nseg')
+			myfile.write('\n')
+			myfile.write("{}/RepeatModeler-open-1.0.11/RepeatModeler -database {} -pa 63\n".format(timeForTE.softwaredir, timeForTE.genome))
+		shell("chmod +x runRepMod.sh")
+

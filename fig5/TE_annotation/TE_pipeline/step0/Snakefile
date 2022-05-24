@@ -1,0 +1,86 @@
+import timeForTE
+
+rule all:
+	input:
+		"TREP.RM.combined.final"
+
+rule get_RMlib:
+	output:
+		"monocotyledons.repeatmasker.lib"
+	shell:
+		"/global/projectb/sandbox/plant/hybridum/software/RepeatMasker/util/queryRepeatDatabase.pl -species monocotyledons > monocotyledons.repeatmasker.lib"
+
+rule remove_nulls:
+	input:
+		"trep-db_nr_Rel-16.fasta"
+	output:
+		"trep-db_nr_Rel-16.nulls-removed.fasta"
+	shell:
+		"python removeNullFromTREP.py"
+
+rule reformat_TREP:
+	input:
+		"trep-db_nr_Rel-16.nulls-removed.fasta"
+	output:
+		"TREP.RMcompatible.preliminary.fasta",
+		"TREP.names"
+	shell:
+		"python -B reformatTREPheadersNEW.py"
+
+rule blast_prep:
+	input:
+		"monocotyledons.repeatmasker.lib",
+		"TREP.RMcompatible.preliminary.fasta"
+	output:
+		"TREP_exemplars_to_blast/" # directory("TREP_exemplars_to_blast")
+	shell:
+		"python3 prepare_TREP_for_blast.py"
+
+rule blast:
+	input:
+		"TREP_exemplars_to_blast/" #if using a newer version of snakemake, do directory("TREP_exemplars_to_blast")
+	output:
+		"TREP_exemplars_to_blast/Laura.trep00010.aln"
+	shell:
+		"chmod +x trepblast.sh; ./trepblast.sh"
+
+rule parse_blast:
+	input:
+		"TREP_exemplars_to_blast/Laura.trep00010.aln"
+	output:
+		"TREP.RMcompatible.fasta"
+	shell:
+		"python3 -B parse_blast_aln.py"
+
+rule concatenate_and_remove_simple_reps:
+	input:
+		"monocotyledons.repeatmasker.lib",
+		"TREP.RMcompatible.fasta"
+	output:
+		"TREP.RM.combined"
+	shell:
+		"cat monocotyledons.repeatmasker.lib TREP.RMcompatible.fasta > TREP.RM.combined; python removeSimpleReps.py"
+
+rule sort_lib:
+	input:
+		"TREP.RM.combined"
+	output:
+		"TREP.RM.combined.sorted.fasta"
+	run:
+		timeForTE.sort_fasta("TREP.RM.combined")
+
+rule remove_redundancy:
+	input:
+		"TREP.RM.combined.sorted.fasta"
+	output:
+		"TREP.RM.combined.almost"
+	shell:
+		"/global/projectb/sandbox/plant/hybridum/software/cd-hit-v4.8.1-2019-0228/cd-hit-est -i TREP.RM.combined.sorted.fasta -o TREP.RM.combined.almost -c 0.8 -G 0 -s 0.8 -aS 0.8 -aL 0.8 -n 5 -T 0 -d 0 -M 0 > CD-HIT.stdout"
+
+rule polish:
+	input:
+		"TREP.RM.combined.almost"
+	output:
+		"TREP.RM.combined.final"
+	run:
+		timeForTE.reformat_fasta("TREP.RM.combined.almost", "TREP.RM.combined.final", 50)

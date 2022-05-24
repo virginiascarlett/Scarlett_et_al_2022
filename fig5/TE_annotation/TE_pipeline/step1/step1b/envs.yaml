@@ -1,0 +1,7 @@
+channels:
+  - BioBuilds
+  - bioconda
+dependencies:
+  - perl 
+  - perl-bioperl=1.6.924
+  - blast-legacy=2.2.26

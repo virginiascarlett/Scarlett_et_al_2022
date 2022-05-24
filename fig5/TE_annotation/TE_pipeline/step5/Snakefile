@@ -1,0 +1,40 @@
+import timeForTE
+
+rule all:
+	input:
+		"{}.all.fasta.out_{}.copynumber.csv".format(timeForTE.genome, timeForTE.chromosomes[-1])
+
+rule concatenateRMfiles:
+	output:
+		"{}.all.fasta.out".format(timeForTE.genome)
+	run:
+		shell( "python3 step5setup.py" )
+
+rule make_dict_file:
+	input:
+		"{}.all.fasta.out".format(timeForTE.genome)
+	output:
+		"{}.dict".format(timeForTE.genome)
+	run:
+		shell( "{}/one_code_to_find_them_all/build_dictionary.pl --rm {}.all.fasta.out --unknown > {}.dict".format(timeForTE.softwaredir, timeForTE.genome, timeForTE.genome) )
+
+#create an empty file called "okay_to_delete.txt" so snakemake knows this is the third rule
+#this rule matches paired LTR harvest LTRs and ints that onecode missed
+rule tidy_dict:
+	input:
+		"{}.dict".format(timeForTE.genome)
+	output:
+		"okay_to_delete.txt"
+	run:
+		shell( "python3 tidydict.py" )
+		shell( "touch okay_to_delete.txt" )
+
+rule run_onecode:
+	input:
+		"okay_to_delete.txt"
+	output:
+		"{}.all.fasta.out_{}.copynumber.csv".format(timeForTE.genome, timeForTE.chromosomes[-1])
+	run:
+		shell( "{}/one_code_to_find_them_all/one_code_to_find_them_all.pl --rm {}.all.fasta.out --ltr {}.dict --flanking 100 --strict".format(timeForTE.softwaredir, timeForTE.genome, timeForTE.genome) )
+
+

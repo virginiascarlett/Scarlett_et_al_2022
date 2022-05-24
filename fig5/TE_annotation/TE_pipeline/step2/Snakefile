@@ -1,0 +1,83 @@
+import timeForTE
+
+rule all:
+	input:
+		"alllibs.nr.fasta"
+
+rule cleanup_MITETracker:
+	output:
+		'families_nr.fasta.clean'
+	run:
+		inF = open("{}/MITE-Tracker/results/{}/families_nr.fasta".format(timeForTE.softwaredir, timeForTE.genome), 'r')
+		outlist = []
+		counter = 1
+		for line in inF.readlines():
+			if line.startswith('>'):
+				outlist.append( '>mite{}#DNA/Unknown\n'.format(str(counter)) )
+				counter += 1
+			else:
+				outlist.append(line)
+		inF.close()
+		outF=open('families_nr.fasta.clean', 'w')
+		for line in outlist:
+			outF.write(line)
+		outF.close()
+
+
+rule step3setup:
+	input:
+		'families_nr.fasta.clean'
+	output:
+		"alllibs.redundant.unfiltered.fasta"
+	run:
+		shell("cp ../step1/step1a/LTRharvest.exemplars.RMready .")
+		shell("cp ../step1/step1b/TransposonPSIresults.fasta.RMready .")
+		shell("find ../step1/step1d/ -name consensi.fa.classified -exec cp {{}} . \;")
+		shell("cp {}/TREP.RM.combined.final .".format(timeForTE.treplibdir))
+		#shell("cp {}/{} .".format(timeForTE.topdir, timeForTE.unmasked_genome_file))
+		shell("cat TransposonPSIresults.fasta.RMready LTRharvest.exemplars.RMready families_nr.fasta.clean consensi.fa.classified TREP.RM.combined.final > alllibs.redundant.unfiltered.fasta")
+
+rule length_filt: #remove seqs less than 80 bp long
+	input:
+		"alllibs.redundant.unfiltered.fasta"
+	output:
+		"alllibs.redundant.fasta"
+	run:
+		filename='alllibs.redundant.unfiltered.fasta'
+		lines = {}
+		with open(filename, 'r') as fastafile:
+			currentKey = ''
+			for line in fastafile.readlines():
+				if line.startswith('>'):
+					currentKey = line.strip('\n')
+				else:
+					if currentKey in lines:
+						lines[currentKey] += line.strip('\n')
+					else:
+						lines[currentKey] = line.strip('\n')
+		lines_filt = {}
+		for k, v in lines.items():
+			if len(v) >= 80:
+				lines_filt[k] = v
+		with open('alllibs.redundant.fasta', 'w') as outF:
+			for k, v in lines_filt.items():
+				outF.write('{}\n'.format(k))
+				outF.write('{}\n'.format(v))
+
+
+rule sortfasta:
+	input:
+		"alllibs.redundant.fasta"
+	output:
+		"alllibs.redundant.sorted.fasta"
+	run:
+		timeForTE.sort_fasta("alllibs.redundant.fasta")
+
+rule CDHIT:
+	input:
+		"alllibs.redundant.sorted.fasta"
+	output:
+		"alllibs.nr.fasta"
+	run:
+		shell("/global/projectb/sandbox/plant/hybridum/software/cd-hit-v4.8.1-2019-0228/cd-hit-est -i alllibs.redundant.sorted.fasta -o alllibs.nr.fasta -c 0.8 -G 0 -aS 0.8 -n 5 -T 0 -d 0 -M 0 > CD-HIT.stdout")
+

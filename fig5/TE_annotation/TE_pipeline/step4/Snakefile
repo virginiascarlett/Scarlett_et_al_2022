@@ -1,0 +1,65 @@
+import timeForTE
+
+rule all:
+	input:
+		"runRepeatmasker.sh",
+		"key_to_array_filenames.txt",
+		"{}.fa".format(str(len(timeForTE.chromosomes)))
+
+rule finish_step_3:
+	output:
+		"TElib.{}.fa".format(timeForTE.genome)
+	run:
+		shell("cd ../step3 ; /global/projectb/sandbox/plant/hybridum/software/ProtExcluder1.2/ProtExcluder.pl -f 50 alllibs.nr.fasta_blast_results.txt alllibs.nr.fasta")
+		#Here I am making a new copy of alllibs.nr.fastanoProtFinal, but changing occurrences of _int and _I to -int and -I. 
+		#Otherwise, RepeatMasker will append '-int' to these, so you end up with names like "OSCopia1_I-int".		
+		shell("cd ../step3 ; sed 's/_I#/-I#/g' alllibs.nr.fastanoProtFinal > temp ; sed 's/_int#/-int#/g' temp > temp2 ; sed 's/_LTR#/-LTR#/g' temp2 > TElib.{}.fa  ; rm temp ; rm temp2".format(timeForTE.genome))
+		shell("cp ../step3/TElib.{}.fa .".format(timeForTE.genome))
+
+
+rule setup:
+	input:
+		'TElib.{}.fa'.format(timeForTE.genome)
+	output:
+		'{}.{}.fasta'.format(timeForTE.genome, timeForTE.chromosomes[-1])
+	run:
+		shell( "cp {}/{} .".format(timeForTE.topdir, timeForTE.unmasked_genome_file) )
+		timeForTE.genome_to_chromosomes(timeForTE.unmasked_genome_file, timeForTE.genome)
+
+
+rule rename_chrom_fastas:
+	input:
+		"{}.{}.fasta".format(timeForTE.genome, timeForTE.chromosomes[-1])
+	output:
+		"key_to_array_filenames.txt",
+		"{}.fa".format(str(len(timeForTE.chromosomes)))
+	run:
+		keydict = {}
+		counter = 1
+		with open("key_to_array_filenames.txt", "w") as file1:
+			for chrom in timeForTE.chromosomes:
+				file1.write('{}.{}.fasta\t{}.fa\n'.format(timeForTE.genome, chrom, str(counter)))
+				keydict[counter] = '{}.{}.fasta'.format(timeForTE.genome, chrom)
+				counter += 1
+		for n in keydict.keys():
+			shell( "cp {} {}.fa".format(keydict[n], str(n)) )
+
+
+rule make_array_script:
+	input:
+		"key_to_array_filenames.txt",
+		"{}.fa".format(str(len(timeForTE.chromosomes)))
+	output:
+		"runRepeatmasker.sh"
+	run:
+		#write_SBATCH(nodes, ntasks, cpus_per_task, time, mem, qos, mailtype, filename)
+		timeForTE.write_SBATCH('1', '1', '32', '1:30:00', '59G', timeForTE.qos_partial_node, 'end', 'runRepeatmasker.sh')
+		with open("runRepeatmasker.sh", "a") as file2:
+			file2.write("#SBATCH --array=1-{}\n".format(len(timeForTE.chromosomes)))
+			file2.write("#SBATCH --error=%A.%a.err\n")
+			file2.write("#SBATCH --output=%A.%a.out\n")
+			file2.write("\n")
+			file2.write("/global/projectb/sandbox/plant/hybridum/software/RepeatMasker/RepeatMasker -lib TElib.{}.fa -gff -pa 31 -nolow -dir . ${{SLURM_ARRAY_TASK_ID}}.fa\n".format(timeForTE.genome))
+		shell("chmod +x runRepeatmasker.sh")
+
+

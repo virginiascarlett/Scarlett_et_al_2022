@@ -1,0 +1,41 @@
+import timeForTE
+
+rule all:
+	input: 
+		"runBLASTX.sh"
+
+rule get_lib:
+	output:
+		"alllibs.nr.fasta"
+	run:
+		shell("cp ../step2/alllibs.nr.fasta .")
+
+rule make_database:
+	input:
+		"alluniRefprexp070416"
+	output:
+		"alluniRefprexp070416.phr",
+		"alluniRefprexp070416.pin",
+		"alluniRefprexp070416.psq"
+	run:
+		shell("makeblastdb -in alluniRefprexp070416 -input_type fasta -dbtype prot")
+
+rule blast: #takes quite a while
+	input:
+		"alllibs.nr.fasta",
+		"alluniRefprexp070416.phr",
+		"alluniRefprexp070416.pin",
+		"alluniRefprexp070416.psq"
+	output:
+		"runBLASTX.sh"
+		#"alllibs.nr.fasta_blast_results.txt"
+	run:
+		#write_SBATCH(nodes, ntasks, cpus_per_task, time, mem, qos, mailtype, filename)
+		timeForTE.write_SBATCH('1', '1', '64', '7:00:00', '118G', timeForTE.qos_whole_node, 'end', 'runBLASTX.sh')
+		with open('runBLASTX.sh', 'a') as myfile:
+			myfile.write('\n')
+			myfile.write("blastx -query alllibs.nr.fasta -db alluniRefprexp070416 -evalue 1e-10 -num_descriptions 10 -out alllibs.nr.fasta_blast_results.txt")
+		shell("chmod +x runBLASTX.sh")
+		shell("sbatch runBLASTX.sh")
+
+

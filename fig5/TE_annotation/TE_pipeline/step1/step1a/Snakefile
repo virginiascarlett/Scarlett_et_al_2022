@@ -1,0 +1,55 @@
+#Okay snakemake wildcards are driving me insane, as usual, 
+#so here is yet another of my dumb snakemake workarounds
+#YOU MUST run on command line like so: timeForTE.genome="Bd21" snakemake
+#where timeForTE.genome=the prefix you used for *.knownTEsmasked.fasta
+
+import timeForTE
+
+rule all:
+	input:
+		"runLTRretriever.sh"
+
+rule setup:
+	output:
+		timeForTE.unmasked_genome_file
+	run:
+		shell("cp {}/{} .".format(timeForTE.topdir, timeForTE.unmasked_genome_file))
+
+
+rule suffixerate:
+	input:
+		timeForTE.unmasked_genome_file
+	output:
+		"{}.lcp".format(timeForTE.unmasked_genome_file), 
+		"{}.prj".format(timeForTE.unmasked_genome_file),
+		"{}.suf".format(timeForTE.unmasked_genome_file),
+		"{}.des".format(timeForTE.unmasked_genome_file), 
+		"{}.llv".format(timeForTE.unmasked_genome_file),
+		"{}.sds".format(timeForTE.unmasked_genome_file),
+		"{}.esq".format(timeForTE.unmasked_genome_file), 
+		"{}.md5".format(timeForTE.unmasked_genome_file), 
+		"{}.ssp".format(timeForTE.unmasked_genome_file),
+	run:
+		shell("gt suffixerator -db {} -indexname {} -tis -suf -lcp -des -ssp -sds -dna".format(timeForTE.unmasked_genome_file, timeForTE.unmasked_genome_file)) 
+
+rule ltrharvest:
+	input:
+		"{}.suf".format(timeForTE.unmasked_genome_file)
+	output:
+		"{}.gff85".format(timeForTE.genome),
+		"{}.out85".format(timeForTE.genome),
+		"{}.outinner85".format(timeForTE.genome),
+		"{}.result85".format(timeForTE.genome),
+	run:
+		shell("gt ltrharvest -index {} -out {}.out85 -outinner {}.outinner85 -gff3 {}.gff85 -mindistltr 2000 -maxdistltr 20000 -minlenltr 100 -maxlenltr 2000 -mintsd 4 -maxtsd 20 -motif tgca -similar 85 -motifmis 1 -xdrop 5 -mat 2 -mis -2 -ins -3 -del -3 > {}.result85".format(timeForTE.unmasked_genome_file, timeForTE.genome, timeForTE.genome, timeForTE.genome, timeForTE.genome))
+
+rule retriever_script:
+	input:
+		"{}.result85".format(timeForTE.genome)
+	output:
+		"runLTRretriever.sh"
+	run:
+		timeForTE.write_SBATCH('1', '1', '32', '1:30:00', '59G', 'genepool_shared', 'end', 'runLTRretriever.sh') #nodes, ntasks, cpus_per_task, time, mem, qos, mailtype, filename
+		with open('runLTRretriever.sh', 'a') as myfile:
+			myfile.write('/global/projectb/sandbox/plant/hybridum/software/LTR_retriever/LTR_retriever -genome {} -inharvest {}.result85 -threads 31'.format(timeForTE.unmasked_genome_file, timeForTE.genome))
+		shell("chmod +x runLTRretriever.sh")

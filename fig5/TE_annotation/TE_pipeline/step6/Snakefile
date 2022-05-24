@@ -1,0 +1,38 @@
+import timeForTE
+
+rule all:
+	input:
+		"TEstats.txt"
+
+rule grab_onecode_outfiles:
+	output:
+		"{}.all.fasta.out_{}.elem_sorted.csv".format(timeForTE.genome, timeForTE.chromosomes[-1])
+	run:
+		for chrom in timeForTE.chromosomes:
+			shell( "cp {}/step5/{}.all.fasta.out_{}.elem_sorted.csv .".format(timeForTE.topdir, timeForTE.genome, chrom) )
+
+rule barcode_fragments:
+	input:
+		"{}.all.fasta.out_{}.elem_sorted.csv".format(timeForTE.genome, timeForTE.chromosomes[-1])
+	output:
+		"allfragments.txt",
+		"LTRs_from_fl-LTR-RTs.bed"
+	run:
+		shell( "python3 onecode_to_flLTR-RTs.py" )
+
+rule classify_fragments:
+	input:
+		"allfragments.txt",
+		"LTRs_from_fl-LTR-RTs.bed"
+	output:
+		"allfragments.classified"
+	run:
+		shell("python3 classify_fragments.py")
+
+rule get_stats:
+	input:
+		"allfragments.classified"
+	output:
+		"TEstats.txt"
+	run:
+		shell("python3 getTEstats.py")

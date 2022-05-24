@@ -1,0 +1,68 @@
+#envs.yaml looks like:
+#channels:
+#  - BioBuilds
+#  - bioconda
+#dependencies:
+#  - perl 
+#  - perl-bioperl=1.6.924
+#  - blast-legacy=2.2.26
+
+import os
+import timeForTE
+
+
+rule all:
+	input:
+		"TransposonPSIresults.fasta.RMready"
+
+rule setup:
+	output:
+		timeForTE.unmasked_genome_file
+	shell:
+		"cp {}/{} .".format(timeForTE.topdir, timeForTE.unmasked_genome_file)
+
+rule run_transposonPSI:
+	input:
+		"envs.yaml",
+		timeForTE.unmasked_genome_file
+	output:
+		"{}.TPSI.allHits.chains.bestPerLocus.gff3".format(timeForTE.unmasked_genome_file)
+	conda:
+	 	"envs.yaml"
+	shell:
+		"/global/projectb/sandbox/plant/hybridum/software/TransposonPSI_08222010/transposonPSI.pl {} nuc".format(timeForTE.unmasked_genome_file)
+		
+rule gff2bed:
+	input:
+		"{}.TPSI.allHits.chains.bestPerLocus.gff3".format(timeForTE.unmasked_genome_file),
+		"reformatTransposonPSI.py",
+	output:
+		"TransposonPSIresults.bed"
+	shell:
+		"python -B reformatTransposonPSI.py"
+
+rule bed2fasta:
+	input: 
+		"TransposonPSIresults.bed"
+	output: 
+		"TransposonPSIresults.temp"
+	shell:
+		"bedtools getfasta -fi {} -fo TransposonPSIresults.temp -bed TransposonPSIresults.bed -name -s".format(timeForTE.unmasked_genome_file)
+
+rule clean_fasta:
+	input:
+		"TransposonPSIresults.temp"
+	output:
+		"TransposonPSIresults.fasta.RMready"
+	run:
+		outfile = open('TransposonPSIresults.fasta', 'w')
+		with open('TransposonPSIresults.temp', 'r') as tempfile:
+			for line in tempfile.readlines():
+				if line.startswith('>'):
+					outfile.write("{}\n".format(line.split('::')[0]))
+				else:
+					outfile.write(line)
+		outfile.close()
+		timeForTE.reformat_fasta('TransposonPSIresults.fasta', 'TransposonPSIresults.fasta.RMready', 50)
+
+
