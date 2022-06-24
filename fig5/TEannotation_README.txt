@@ -1,10 +1,10 @@
 ~~~ Virginia's TE Pipeline ~~~
-A very clunky TE annotation pipeline designed for (and only tested on) Brachypodium, but is 
+A TE annotation pipeline designed for (and only tested on) Brachypodium, but is 
 appropriate for any grasses. Is appropriate for any plant if you get the right public TE database(s).
 
 When I started making this, EDTA (https://github.com/oushujun/EDTA) was not available yet,
-or rather it was but it was still buggy. But now EDTA is available. EDTA is similar to my 
-pipeline, but is honestly strictly better.
+or rather it was but it was still buggy. But now EDTA is available. I would recommend the
+EDTA pipeline over mine. My pipeline is not a software tool, it is just the protocol I used in the Bhyb26 paper.
 
 The premise of this pipeline is as follows: First, monocot TEs are pulled from the RepeatMasker database, 
 and these are concatenated to the TREP database to create an initial TE library. To expand this library 
