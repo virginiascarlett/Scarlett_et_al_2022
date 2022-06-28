@@ -2,74 +2,6 @@ library(ggplot2)
 library(tidyr)
 library(stringr)
 
-#manually copying output from horseraceUpdatedNEW.py,
-#see my notebook Feb. 2 2022
-horserace <- data.frame(
-  'tissue' = c('Root', 'Leaf', 'Floret', 'Callus'),
-  'favorsD' = c(6488, 5898, 6704, 5691),
-  'total_pairs' = c(12937, 12010, 13376, 11414)
-)
-#OLD RNA-SEQ DATA FROM ABR113, REVISITING FOR DISSERTATION:
-#see notebook, 7 Feb. 2022
-horserace <- data.frame(
-  'tissue' = c('Leaf', 'Leaf', 'Leaf', 'Spike', 'Spike'),
-  'favorsD' = c(6065, 6169, 6159, 9207, 8132),
-  'total_pairs' = c(12247, 12272, 12263, 16384, 16133)
-)
-horserace$favorsS <- horserace$total_pairs - horserace$favorsD
-horserace <- subset(horserace, select = -c(total_pairs) )
-names(horserace) <- c('tissue', 'D', 'S')
-horserace <- gather(horserace, favored_subg, num_genes, D:S, factor_key=TRUE)
-
-########################
-#FOR ABR113:
-horserace$mean <- c(
-  rep(mean(subset(horserace, tissue=="Leaf" & favored_subg=="D")$num_genes), times=3),
-  rep(mean(subset(horserace, tissue=="Spike" & favored_subg=="D")$num_genes), times=2),
-  rep(mean(subset(horserace, tissue=="Leaf" & favored_subg=="S")$num_genes), times=3),
-  rep(mean(subset(horserace, tissue=="Spike" & favored_subg=="S")$num_genes), times=2)
-  )
-horserace$sd <- c(
-  rep(sd(subset(horserace, tissue=="Leaf" & favored_subg=="D")$num_genes), times=3),
-  rep(sd(subset(horserace, tissue=="Spike" & favored_subg=="D")$num_genes), times=2),
-  rep(sd(subset(horserace, tissue=="Leaf" & favored_subg=="S")$num_genes), times=3),
-  rep(sd(subset(horserace, tissue=="Spike" & favored_subg=="S")$num_genes), times=2)
-)
-horserace <- subset(horserace, select = -c(num_genes) )
-horserace <- horserace[!duplicated(horserace),]
-########################
-
-#tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb2_horserace.tiff", units="in", width=6.5, height=3, res=300)
-tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_ABR113_horserace.tiff", units="in", width=5, height=3, res=300)
-#Bhyb26:
-#ggplot(horserace, aes(x=tissue, y=num_genes, fill=favored_subg))+
-#ABR113:
-ggplot(horserace, aes(x=tissue, y=mean, fill=favored_subg))+
-  geom_bar(stat = 'identity', position = 'dodge') + 
-  theme(
-    legend.title=element_text(size=16), 
-    legend.text=element_text(size=16),
-    legend.margin=margin(0,0,0,0),
-    legend.box.margin=margin(-5,-5,-5,-5),
-    axis.title.x = element_blank(),
-    axis.title.y = element_text(size=19, margin = margin(t = 0, r = 10, b = 0, l = 0)),
-    axis.text.x = element_text(size=17),
-    axis.text.y = element_text(size=15),
-    panel.background = element_blank(),
-    panel.border=element_rect(colour="gray", fill=NA),
-    panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
-    panel.grid.minor = element_line(size = 0.25, linetype = 'solid', color = "gray90"),
-    axis.line = element_line(colour = "gray"),
-    plot.margin=unit(c(0.3,0.3,0.3,0.3),"cm"))+
-  ###FOR ABR113:
-  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,position=position_dodge(.9))+
-  ylab("Number of gene pairs") +
-  scale_fill_manual(
-    name = "Favored homeolog",
-    values = c("sienna1", "skyblue1"),
-    labels=c("BhD", "BhS")) 
-dev.off()
-
 
 #manually copying output from analyze_counts_by_subg.py,
 #see my notebook Nov.29 2021
@@ -79,75 +11,6 @@ countdat <- data.frame(
   'S' = c(485971, 571728, 819356, 205699)
 )
 countdat <- gather(countdat, subg, num_counts, D:S, factor_key=TRUE)
-
-##################
-#OLD RNA-SEQ DATA FROM ABR113, REVISITING FOR DISSERTATION:
-countdat <- data.frame(
-  'tissue' = c('Leaf', 'Leaf', 'Leaf', 'Spike', 'Spike'),
-  'D' = c(15165822, 18195689, 17815259, 13150381, 12309994),
-  'S' = c(15473884, 18337787, 18075138, 12816582, 11339499)
-)
-countdat <- gather(countdat, subg, num_counts, D:S, factor_key=TRUE)
-countdat$sample <- c('Leaf 1', 'Leaf 2', 'Leaf 3', 'Spike 1', 'Spike 2', 'Leaf 1', 'Leaf 2', 'Leaf 3', 'Spike 1', 'Spike 2')
-#ABR113:
-# wc -l BhDprimTrlengths.txt 
-# 37711 BhDprimTrlengths.txt
-# wc -l BhSprimTrlengths.txt 
-# 32449 BhSprimTrlengths.txt
-# 32449/(32449+37711) = 0.4625
-tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_subgcount_ABR113_leaf.tiff", units="in", width=6, height=4, res=300)
-ggplot(subset(countdat, tissue=="Leaf"), aes(x=sample, y=num_counts, fill=subg))+
-  geom_bar(stat = 'identity', position = 'fill') + 
-  geom_hline(yintercept = 0.4625, color='red', size=1)+ 
-  theme(
-    legend.title=element_text(size=16),
-    legend.text=element_text(size=16),
-    legend.margin=margin(0,0,0,0),
-    legend.box.margin=margin(-5,-5,-5,-5),
-    axis.title.x = element_blank(),
-    axis.title.y = element_text(size=20, margin = margin(t = 0, r = 5, b = 0, l = 0)),
-    axis.text.x = element_text(size=17),
-    axis.text.y = element_text(size=17),
-    panel.background = element_blank(),
-    panel.border=element_rect(colour="gray", fill=NA),
-    panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
-    panel.grid.minor = element_line(size = 0.25, linetype = 'solid', color = "gray90"),
-    axis.line = element_line(colour = "gray"),
-    plot.margin=unit(c(0.3,0.3,0.3,0.3),"cm"))+
-  ylab("Percent of total counts")+
-  scale_fill_manual(
-    name = "Read origin",
-    values =c("#E69A8DFF", "#5F4B8BFF"), 
-    labels=c("BhD transcript", "BhS transcript"))+
-  scale_y_continuous(labels = scales::percent)
-dev.off()
-tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_subgcount_ABR113_spike.tiff", units="in", width=5, height=4, res=300)
-ggplot(subset(countdat, tissue=="Spike"), aes(x=sample, y=num_counts, fill=subg))+
-  geom_bar(stat = 'identity', position = 'fill') + 
-  geom_hline(yintercept = 0.4625, color='red', size=1)+ 
-  theme(
-    legend.title=element_text(size=16),
-    legend.text=element_text(size=16),
-    legend.margin=margin(0,0,0,0),
-    legend.box.margin=margin(-5,-5,-5,-5),
-    axis.title.x = element_blank(),
-    axis.title.y = element_text(size=20, margin = margin(t = 0, r = 5, b = 0, l = 0)),
-    axis.text.x = element_text(size=17),
-    axis.text.y = element_text(size=17),
-    panel.background = element_blank(),
-    panel.border=element_rect(colour="gray", fill=NA),
-    panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
-    panel.grid.minor = element_line(size = 0.25, linetype = 'solid', color = "gray90"),
-    axis.line = element_line(colour = "gray"),
-    plot.margin=unit(c(0.3,0.3,0.3,0.3),"cm"))+
-  ylab("Percent of total counts")+
-  scale_fill_manual(
-    name = "Read origin",
-    values =c("#E69A8DFF", "#5F4B8BFF"), 
-    labels=c("BhD transcript", "BhS transcript"))+
-  scale_y_continuous(labels = scales::percent)
-dev.off()
-###############
 
 
 
@@ -187,6 +50,70 @@ ggplot(countdat, aes(x=tissue, y=num_counts, fill=subg))+
   scale_y_continuous(labels = scales::percent)
 dev.off()
 
+
+#manually copying output from horseraceUpdatedNEW.py,
+#see my notebook Feb. 2 2022
+horserace <- data.frame(
+  'tissue' = c('Root', 'Leaf', 'Floret', 'Callus'),
+  'favorsD' = c(6488, 5898, 6704, 5691),
+  'total_pairs' = c(12937, 12010, 13376, 11414)
+)
+
+tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb2_horserace.tiff", units="in", width=6.5, height=3, res=300)
+#tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_ABR113_horserace.tiff", units="in", width=5, height=3, res=300)
+#Bhyb26:
+ggplot(horserace, aes(x=tissue, y=num_genes, fill=favored_subg))+
+#ABR113:
+#ggplot(horserace, aes(x=tissue, y=mean, fill=favored_subg))+
+  geom_bar(stat = 'identity', position = 'dodge') +
+  theme(
+    legend.title=element_text(size=16),
+    legend.text=element_text(size=16),
+    legend.margin=margin(0,0,0,0),
+    legend.box.margin=margin(-5,-5,-5,-5),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(size=19, margin = margin(t = 0, r = 10, b = 0, l = 0)),
+    axis.text.x = element_text(size=17),
+    axis.text.y = element_text(size=15),
+    panel.background = element_blank(),
+    panel.border=element_rect(colour="gray", fill=NA),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid', color = "gray90"),
+    axis.line = element_line(colour = "gray"),
+    plot.margin=unit(c(0.3,0.3,0.3,0.3),"cm"))+
+  ###FOR ABR113:
+  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,position=position_dodge(.9))+
+  ylab("Number of gene pairs") +
+  scale_fill_manual(
+    name = "Favored homeolog",
+    values = c("sienna1", "skyblue1"),
+    labels=c("BhD", "BhS"))
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################### SCRAPS ###################### 
 
 #Adding some code Feb. 2 2022: So, homeologs in general are not biased toward one subgenome.
 #What about the "significantly" biased homeolog pairs? I put "significantly" in quotes because
@@ -385,5 +312,169 @@ get_upper_cutoff(homeoBias[,6])
 # [1] 7.081963
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#OLD STUFF FOR DISSERTATION
+# 
+# #manually copying output from horseraceUpdatedNEW.py,
+# #see my notebook Feb. 2 2022
+# horserace <- data.frame(
+#   'tissue' = c('Root', 'Leaf', 'Floret', 'Callus'),
+#   'favorsD' = c(6488, 5898, 6704, 5691),
+#   'total_pairs' = c(12937, 12010, 13376, 11414)
+# )
+# #OLD RNA-SEQ DATA FROM ABR113, REVISITING FOR DISSERTATION:
+# #see notebook, 7 Feb. 2022
+# horserace <- data.frame(
+#   'tissue' = c('Leaf', 'Leaf', 'Leaf', 'Spike', 'Spike'),
+#   'favorsD' = c(6065, 6169, 6159, 9207, 8132),
+#   'total_pairs' = c(12247, 12272, 12263, 16384, 16133)
+# )
+# horserace$favorsS <- horserace$total_pairs - horserace$favorsD
+# horserace <- subset(horserace, select = -c(total_pairs) )
+# names(horserace) <- c('tissue', 'D', 'S')
+# horserace <- gather(horserace, favored_subg, num_genes, D:S, factor_key=TRUE)
+# 
+# ########################
+# #FOR ABR113:
+# horserace$mean <- c(
+#   rep(mean(subset(horserace, tissue=="Leaf" & favored_subg=="D")$num_genes), times=3),
+#   rep(mean(subset(horserace, tissue=="Spike" & favored_subg=="D")$num_genes), times=2),
+#   rep(mean(subset(horserace, tissue=="Leaf" & favored_subg=="S")$num_genes), times=3),
+#   rep(mean(subset(horserace, tissue=="Spike" & favored_subg=="S")$num_genes), times=2)
+# )
+# horserace$sd <- c(
+#   rep(sd(subset(horserace, tissue=="Leaf" & favored_subg=="D")$num_genes), times=3),
+#   rep(sd(subset(horserace, tissue=="Spike" & favored_subg=="D")$num_genes), times=2),
+#   rep(sd(subset(horserace, tissue=="Leaf" & favored_subg=="S")$num_genes), times=3),
+#   rep(sd(subset(horserace, tissue=="Spike" & favored_subg=="S")$num_genes), times=2)
+# )
+# horserace <- subset(horserace, select = -c(num_genes) )
+# horserace <- horserace[!duplicated(horserace),]
+# ########################
+# 
+# #tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb2_horserace.tiff", units="in", width=6.5, height=3, res=300)
+# tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_ABR113_horserace.tiff", units="in", width=5, height=3, res=300)
+# #Bhyb26:
+# #ggplot(horserace, aes(x=tissue, y=num_genes, fill=favored_subg))+
+# #ABR113:
+# ggplot(horserace, aes(x=tissue, y=mean, fill=favored_subg))+
+#   geom_bar(stat = 'identity', position = 'dodge') + 
+#   theme(
+#     legend.title=element_text(size=16), 
+#     legend.text=element_text(size=16),
+#     legend.margin=margin(0,0,0,0),
+#     legend.box.margin=margin(-5,-5,-5,-5),
+#     axis.title.x = element_blank(),
+#     axis.title.y = element_text(size=19, margin = margin(t = 0, r = 10, b = 0, l = 0)),
+#     axis.text.x = element_text(size=17),
+#     axis.text.y = element_text(size=15),
+#     panel.background = element_blank(),
+#     panel.border=element_rect(colour="gray", fill=NA),
+#     panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
+#     panel.grid.minor = element_line(size = 0.25, linetype = 'solid', color = "gray90"),
+#     axis.line = element_line(colour = "gray"),
+#     plot.margin=unit(c(0.3,0.3,0.3,0.3),"cm"))+
+#   ###FOR ABR113:
+#   geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,position=position_dodge(.9))+
+#   ylab("Number of gene pairs") +
+#   scale_fill_manual(
+#     name = "Favored homeolog",
+#     values = c("sienna1", "skyblue1"),
+#     labels=c("BhD", "BhS")) 
+# dev.off()
+# 
+# ##################
+# #OLD RNA-SEQ DATA FROM ABR113, REVISITING FOR DISSERTATION:
+# countdat <- data.frame(
+#   'tissue' = c('Leaf', 'Leaf', 'Leaf', 'Spike', 'Spike'),
+#   'D' = c(15165822, 18195689, 17815259, 13150381, 12309994),
+#   'S' = c(15473884, 18337787, 18075138, 12816582, 11339499)
+# )
+# countdat <- gather(countdat, subg, num_counts, D:S, factor_key=TRUE)
+# countdat$sample <- c('Leaf 1', 'Leaf 2', 'Leaf 3', 'Spike 1', 'Spike 2', 'Leaf 1', 'Leaf 2', 'Leaf 3', 'Spike 1', 'Spike 2')
+# #ABR113:
+# # wc -l BhDprimTrlengths.txt 
+# # 37711 BhDprimTrlengths.txt
+# # wc -l BhSprimTrlengths.txt 
+# # 32449 BhSprimTrlengths.txt
+# # 32449/(32449+37711) = 0.4625
+# tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_subgcount_ABR113_leaf.tiff", units="in", width=6, height=4, res=300)
+# ggplot(subset(countdat, tissue=="Leaf"), aes(x=sample, y=num_counts, fill=subg))+
+#   geom_bar(stat = 'identity', position = 'fill') + 
+#   geom_hline(yintercept = 0.4625, color='red', size=1)+ 
+#   theme(
+#     legend.title=element_text(size=16),
+#     legend.text=element_text(size=16),
+#     legend.margin=margin(0,0,0,0),
+#     legend.box.margin=margin(-5,-5,-5,-5),
+#     axis.title.x = element_blank(),
+#     axis.title.y = element_text(size=20, margin = margin(t = 0, r = 5, b = 0, l = 0)),
+#     axis.text.x = element_text(size=17),
+#     axis.text.y = element_text(size=17),
+#     panel.background = element_blank(),
+#     panel.border=element_rect(colour="gray", fill=NA),
+#     panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
+#     panel.grid.minor = element_line(size = 0.25, linetype = 'solid', color = "gray90"),
+#     axis.line = element_line(colour = "gray"),
+#     plot.margin=unit(c(0.3,0.3,0.3,0.3),"cm"))+
+#   ylab("Percent of total counts")+
+#   scale_fill_manual(
+#     name = "Read origin",
+#     values =c("#E69A8DFF", "#5F4B8BFF"), 
+#     labels=c("BhD transcript", "BhS transcript"))+
+#   scale_y_continuous(labels = scales::percent)
+# dev.off()
+# tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_subgcount_ABR113_spike.tiff", units="in", width=5, height=4, res=300)
+# ggplot(subset(countdat, tissue=="Spike"), aes(x=sample, y=num_counts, fill=subg))+
+#   geom_bar(stat = 'identity', position = 'fill') + 
+#   geom_hline(yintercept = 0.4625, color='red', size=1)+ 
+#   theme(
+#     legend.title=element_text(size=16),
+#     legend.text=element_text(size=16),
+#     legend.margin=margin(0,0,0,0),
+#     legend.box.margin=margin(-5,-5,-5,-5),
+#     axis.title.x = element_blank(),
+#     axis.title.y = element_text(size=20, margin = margin(t = 0, r = 5, b = 0, l = 0)),
+#     axis.text.x = element_text(size=17),
+#     axis.text.y = element_text(size=17),
+#     panel.background = element_blank(),
+#     panel.border=element_rect(colour="gray", fill=NA),
+#     panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
+#     panel.grid.minor = element_line(size = 0.25, linetype = 'solid', color = "gray90"),
+#     axis.line = element_line(colour = "gray"),
+#     plot.margin=unit(c(0.3,0.3,0.3,0.3),"cm"))+
+#   ylab("Percent of total counts")+
+#   scale_fill_manual(
+#     name = "Read origin",
+#     values =c("#E69A8DFF", "#5F4B8BFF"), 
+#     labels=c("BhD transcript", "BhS transcript"))+
+#   scale_y_continuous(labels = scales::percent)
+# dev.off()
+# ###############
+# 
 
   
