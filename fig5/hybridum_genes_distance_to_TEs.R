@@ -1,6 +1,7 @@
 suppressPackageStartupMessages({
   library(GenomicRanges)
   library(stringr)
+  library(ggplot2)
 })
 options(scipen=999) #to prevent scientific notation
 
@@ -283,124 +284,37 @@ mean(res)
 #^On average, my control trials with conserved genes yielded 209.85 genes that overlap a TE
 
 
-#Let's be a little more stringent and specify that the gene must CONTAIN a TE. Shouldn't really make a difference.
-Bhyb26ov <- findOverlaps(Bhyb26TEs, Bhyb26genes, ignore.strand=F, type="within") #NOTE STRAND CHOICE HERE
-Bhyb26ovGR <- Bhyb26genes[unique(subjectHits(Bhyb26ov))]
-Bhyb26ov_genes <- gsub("ID=", "", sapply(strsplit(Bhyb26ovGR$info, ";Name="), "[[", 1))
-trialinfo$TEov <- trialinfo$Hybgene %in% Bhyb26ov_genes
-res <- rbind(by(trialinfo$TEov, trialinfo$Trial, sum))
-mean(res)
-#196.43
+
+
+
+#'Vox referee vox dei': reviewer requested the distribution of outcomes (Aug 2022)
+toPlot<-as.data.frame(t(data.frame('outcome'=res)))
+names(toPlot) <- c('outcome')
+p <- ggplot(toPlot, aes(x=outcome))+
+  geom_histogram(color = "black", fill="#56B4E9") + 
+  geom_vline(xintercept=130, color='red', size=0.7, linetype='dashed')+
+  ylab("Number of trials")+
+  xlab("Number of genes overlapping a TE")+ 
+  theme(
+    axis.title.x = element_text(size=16),
+    axis.title.y = element_text(size=16),
+    axis.text.x = element_text(size=15),
+    axis.text.y = element_text(size=15),
+    panel.border=element_rect(colour="gray", fill=NA),
+    panel.background = element_blank(),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
+    panel.grid.minor = element_line(size = 0.2, linetype = 'solid', color = "gray90"),
+    plot.margin=unit(c(0.2,0.2,0.2,0.2),"cm"))
+
+tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/aug12_TEoverlap_trials.tiff", units="in", width=5, height=3, res=300)
+p+ 
+  #scale_y_continuous(expand = c(0, 0), limits = c(0, max(ggplot_build(p3)$data[[1]]$ymax)*1.1))+
+  scale_x_continuous(expand = c(0, 0), limits = c(110, 260))
+dev.off()
 
 
 
 
-
-#OLD STUFF  :
-# get_num_ov_TEs <- function(myfile) {
-#   mydat <- read.csv(paste0('/home/virginia/Documents/school/vogelLab/notebook/2021/lost_genes/', myfile), sep='\t', header=F, stringsAsFactors = F)
-#   myGR <- GRanges(
-#     seqnames=mydat[,"V6"],
-#     ranges=IRanges(start=mydat[,"V7"], end=mydat[,"V8"]),
-#     strand=mydat[,"V9"],
-#     dipgene=mydat[,"V1"])
-#   myGR_condensed <- unlist(range(split(myGR, ~dipgene))) #just take the start and end of the alignable region
-#   #if there is a TE insertion, we don't expect that to be alignable
-#   myov <- findOverlaps(myGR_condensed, Bhyb26TEs, ignore.strand=F) #NOTE STRAND CHOICE HERE
-#   return( length(unique(queryHits(myov))) ) #this is the number of lost genes that overlap a TE
-# }
-# 
-# get_gene_size <- function(myfile) { #returns the average length of the 464 alignable regions
-#   mydat <- read.csv(paste0('/home/virginia/Documents/school/vogelLab/notebook/2021/lost_genes/', myfile), sep='\t', header=F, stringsAsFactors = F)
-#   myGR <- GRanges(
-#     seqnames=mydat[,"V6"],
-#     ranges=IRanges(start=mydat[,"V7"], end=mydat[,"V8"]),
-#     strand=mydat[,"V9"],
-#     dipgene=mydat[,"V1"])
-#   myGR_condensed <- unlist(range(split(myGR, ~dipgene))) #just take the start and end of the alignable region
-#   #if there is a TE insertion, we don't expect that to be alignable
-#   return( mean(width(myGR_condensed)) )
-# }
-# 
-# get_search_space <- function(myfile){ #returns the sum of the lengths of the 464 alignable regions
-#   mydat <- read.csv(paste0('/home/virginia/Documents/school/vogelLab/notebook/2021/lost_genes/', myfile), sep='\t', header=F, stringsAsFactors = F)
-#   myGR <- GRanges(
-#     seqnames=mydat[,"V6"],
-#     ranges=IRanges(start=mydat[,"V7"], end=mydat[,"V8"]),
-#     strand=mydat[,"V9"],
-#     dipgene=mydat[,"V1"])
-#   myGR_condensed <- unlist(range(split(myGR, ~dipgene))) #just take the start and end of the alignable region
-#   #if there is a TE insertion, we don't expect that to be alignable
-#   return( sum(width(myGR_condensed)) )
-# }
-# 
-# files <- sapply(seq(1, 1000), function(s) paste0('pseudogeneIntervals_sample', s, '.txt'))
-# lost_ov <- get_num_ov_TEs('pseudogeneIntervals_lostgenes.txt')
-# lost_length <- get_gene_size('pseudogeneIntervals_lostgenes.txt')
-# #takes a minute or two
-# trial_ovs <- unname(sapply(files, function(filename) get_num_ov_TEs(filename)))
-# trial_lengths <- unname(sapply(files, function(filename) get_gene_size(filename)))
-# #TEs_per_bp_lost <- lost_ov/lost_length
-# #TEs_per_bp_trials <- mean(trial_ovs/trial_lengths)
-# trial_ss <- unname(sapply(files, function(filename) get_search_space(filename)))
-# lost_ss <- sum(width(lostGR_condensed))
-# hits_per_mb_lost <- lost_ov/lost_ss*1000000
-# hits_per_mb_trials <- trial_ovs/trial_ss*1000000
-
-#DATA USING MASTER LIBRARY:
-# > hits_per_mb_lost
-# [1] 130.4351
-# > mean(hits_per_mb_trials)
-# [1] 117.628
-
-# > length(unique(queryHits(Bhyb26LGov))) #this is the number of lost genes that overlap a TE
-# [1] 100
-# > TEs_per_bp_lost
-# [1] 0.04460879
-# > TEs_per_bp_trials
-# [1] 0.04009598
-# > head(trial_ovs)
-# [1] 121 139 126 125 131 141
-# > head(trial_lengths)
-# [1] 2986.325 3127.635 3062.678 3310.994 3255.629 3312.883
-# > min(trial_ovs)
-# [1] 101
-# > mean(trial_ovs)
-# [1] 130.733
-
-# toplot <- data.frame(hits=trial_ovs, searchspace = trial_ss, genetype="conserved")
-# temp <- data.frame(hits=lost_ov, searchspace=lost_ss, genetype="lost")
-# toplot <- rbind(toplot, temp)
-# tiff("/home/virginia/Documents/school/vogelLab/notebook/2022/feb9_distance_to_TEs_no_line.tiff", units="in", width=4.5, height=3.5, res=300)
-# ggplot(toplot, aes(x=searchspace/1000000, y=hits, color=genetype))+
-#   geom_point()+
-#   geom_smooth(data=subset(toplot, genetype=="conserved"), method=loess, fullrange=TRUE)+ #se=FALSE, 
-#   ylab("Number of Genes\nOverlapping a TE")+
-#   xlab("Size of Search Space (Mb)")+
-#   theme(
-#     legend.key = element_rect(fill = "transparent"),
-#     legend.title=element_blank(), 
-#     legend.text=element_text(size=16),
-#     legend.margin=margin(0,0,0,0),
-#     legend.box.margin=margin(-5,-5,-5,-5),
-#     legend.position = "top",
-#     axis.title.x = element_text(size=16),
-#     axis.title.y = element_text(size=16),
-#     axis.text.x = element_text(size=15),
-#     axis.text.y = element_text(size=15),
-#     panel.border=element_rect(colour="gray", fill=NA),
-#     panel.background = element_blank(),
-#     panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "gray90"),
-#     panel.grid.minor = element_line(size = 0.2, linetype = 'solid', color = "gray90"),
-#     plot.margin=unit(c(0.2,0.8,0.2,0.2),"cm"))+
-#   scale_color_manual(
-#     #name = "Genome",
-#     values = c("#574C47", "red"), #8ED6EE
-#     labels=c("Conserved", "Lost"),
-#     guide = guide_legend(override.aes = list(linetype=0)))+
-#   xlim(min(toplot$searchspace/1000000)*0.9, max(toplot$searchspace/1000000)*1.1)+
-#   ylim(min(toplot$hits)*0.9, max(toplot$hits)*1.1)
-# dev.off()
 
 
 
