@@ -1,0 +1,287 @@
+This is a guide to the latest version of my pseudogene identification/analysis protocol.
+This protocol is described in Scarlett et al. 2022, "Multiple origins, one evolutionary trajectory: 
+gradual evolution characterizes distinct lineages of allotetraploid Brachypodium", Genetics.
+
+The purpose of this workflow is to identify pseudogenes (fragmented or degraded genes that may or
+may not function properly anymore) in a polyploid. We will do this by using the intact orthologs in 
+the diploid progenitor(s) to search for pseudogenes in the polyploid. Reasonably high-quality
+genome assemblies for the polyploid and progenitor(s) are required, as well as peptides and coding 
+sequences for the progenitor(s), such as those that can be downloaded from Phytozome.
+This pipeline is only suitable for tetraploids. 
+
+First, I made syntenic orthogroups (groups of putatively orthologous genes from several genomes)
+in GENESPACE for rice and several brachypodium genomes. In my case, it was rice, B. distachyon, B. stacei,
+ABR113-S subgenome, ABR113-D subgenome, Bhyb26-S, and Bhyb26-D.
+Then, I identified those orthogroups where all but one (sub)genome was represented:
+For example, an orthogroup that contains at least one gene from every genome except the Bhyb26D subgenome.
+Except for the cases where the gene is missing from rice, it is reasonable to guess that
+the gene was lost in the one lineage that isn't represented. 
+I am calling these my 'lost' or 'missing' genes. I want to investigate these cases more closely 
+to see whether the gene fragments are still there in the genome. If so, we can investigate 
+the gene fragments for signs of pseudogenization/degradation.  
+
+Here is my workflow:
+(1) Run GENESPACE and identify syntenic orthogroups of interest. (Those that are missing one genome.)
+	-At the same time, identify syntenic orthogroups that are conserved in all genomes.
+	Save the coordinates of the polyploid genes from these syntenic OGs as a bed file. 
+(2) Use a python script to identify all the regions of the polyploid genome where a missing gene should be (up to 200kb).
+	-The output of this script is a bed file with all the regions of interest.
+(3) Use bedtools to get a fasta file for each genomic region.
+	-For the conserved genes, go straight from step 1 to here.
+(4) For each missing gene, get a fasta file for the peptide of the most closely related ortholog. 
+(5) Use exonerate to align each peptide to the corresponding ~200kb genomic region.
+	-You could stop at this point, and simply report how many alignable sequences (pseudogenes) you obtained.
+	-The rest of the workflow is about obtaining dN/dS values for the missing genes relative to their most closely related ortholog.
+(6) For each "missing gene", extract the alignable genomic sequence (the gene fragments) from the exonerate output and place in a fasta file.
+(7) For each "missing gene", get a fasta file for the coding sequence of the most closely related ortholog.
+(8) Use MACSE to align each CDS to the corresponding pseudogene.
+	-I used exonerate to align peptide to genome, but for PAML we need a DNA to DNA alignment, not a 
+	protein to DNA alignment. To get a DNA-DNA alignment, I used MACSE to align the pseudogene to the diploid CDS.
+	The DNA-DNA alignment for dN/dS calculation must be very precise. I used MACSE instead of exonerate because 
+	I found that exonerate codon-aware DNA–DNA alignments were of poor quality, especially on long genes containing frameshifts. 
+(9) Reformat the MACSE output to make it suitable for PAML's yn00 program.
+(10) Run PAML's yn00 program on the reformatted MACSE outputs.
+(11) Extract the dN/dS values from all the PAML output files.
+	-The end result is a two-column file: first column is the name of the progenitor ortholog of the "missing gene"; 
+	second column is the dN/dS value from the pairwise comparison between pseudogene and progenitor ortholog.
+
+
+The plot that ended up in the paper was produced by my script dNdSsignificance_all_conserved_genes.R.
+Later in this document, I explain how I obtained metrics on premature stop codons and alignment lengths. 
+To get expression values for the pseudogenes, I just made a new gff file for the polyploid that includes pseudogenes.
+
+I did this work in a conda environment that includes exonerate, macse, and bedtools.
+(conda activate pseudogene_pipeline)
+
+
+
+
+############# Get dN/dS relative to progenitor ortholog: 'missing' genes #############
+
+First, let's focus on getting dN/dS values for missing genes in the polyploid.
+
+First, run GENESPACE. see my script run_genespace.R as a reference. Run orthofinder on "default", not "fast". 
+
+Next, run bin_orthgroups.R. Run in Rstudio. You will need to edit the paths and the plotting part.
+This script will produce lostgenes.txt, which is an input for the next script.
+It will also produce conservedgenes.bed and conserved_gene_intervals.txt, which we will use later 
+to run this pipeline on conserved genes as a control.
+
+Next, create a working directory for running this part of the pipeline. I call mine
+'lost_genes/', but you can give it any name you want. cd into it.
+
+Have the following data files ready. Either keep these in your working directory,
+or change the paths in genespace2intervals.py to reflect the full path:
+Bdistachyon_556_v3.2.cds_primaryTranscriptOnly.fa
+Bdistachyon_556_v3.2.gene.gff3
+Bdistachyon_556_v3.2.protein_primaryTranscriptOnly.fa
+Bdistachyon__v__Bhyb26D.tsv 
+BhybridumBhyb26v2.1.gene.gff3
+Brachypodium_hybridum_var_Bhyb26.mainGenome.fasta
+Bstacei_316_v1.1.cds_primaryTranscriptOnly.fa
+Bstacei_316_v1.1.gene.gff3
+Bstacei_316_v1.1.protein_primaryTranscriptOnly.fa
+Bstacei__v__Bhyb26S.tsv 
+gffWithOgs.txt
+^Some of these files are from phytozome, and some are from GENESPACE, and some
+are from my script bin_orthogroups.R, which processes GENESPACE output.
+The .tsv files are from GENESPACE in the orthologues directory. Make sure you
+run orthofinder on 'default', not 'fast'.
+
+You'll also need all the scripts in your working directory. 
+Here is the procedure. Run these scripts in order:
+
+python3 genespace2intervals.py 
+# This produces the file missing_gene_intervals.bed, which contains the coordinates of the candidate regions 
+# where the missing genes 'should' be, along with the names of the corresponding diploid genes.
+# You'll need to edit the top of the script to reflect your paths and genomes.
+# DO CHECK that the syntenic orthogroup is the 14th column of gffWithOgs.txt, and the other columns are correct, too.
+# (Lines 161 and 169 of this script.) synOG used to be the 13th column in earlier versions of GENESPACE.
+
+bedtools sort -i missing_gene_intervals.bed > missing_gene_intervals.sorted.bed
+bedtools getfasta -fi BhybridumBhyb26_693_v2.0.softmasked.fa -bed missing_gene_intervals.sorted.bed -nameOnly -fo missing_gene_intervals.fa
+# These two commands convert the bed file to one big fasta file with all of those genomic regions. 
+
+python3 parseRegionsFromFasta.py
+# A quick python script to split that one big fasta file into many little fasta files.
+# (As far as I know, we have to do this to run Exonerate on just one sequence.)
+# I put these in a directory called candidatePseudogeneRegions.
+
+python3 parsePep.py Bdistachyon_556_v3.2.protein_primaryTranscriptOnly.fa Bstacei_316_v1.1.protein_primaryTranscriptOnly.fa
+# A quick python script to split the peptide annotation file(s) from Phytozome into many little fasta files.
+# NEW: One progenitor is also acceptable, e.g.:
+# python3 parsePep.py Bstacei_316_v1.1.protein_primaryTranscriptOnly.fa
+
+python3 make_aliases.py 
+# This script renames my files with simple names and produces a file called aliases.txt: this is 
+# a table listing the old names and new names. DO NOT DELETE THIS FILE!!!
+# It is handy and tidy to have a simple name for each pseudogene/synOG, which my shell scripts exploit later.
+
+./runExonerate_p2g.sh
+# For each pseudogene/diploid peptide pair, run an Exonerate protein2genome alignment.
+# I am just doing these sequentially, since the whole thing only takes a couple of minutes.
+ 
+for fname in $( ls candidatePseudogeneRegions/*.aln.p2g ); do python3 extract_seq2_exonerate.py $fname ; done
+# Extract the aligned genomic sequence (the pseudogene) from the exonerate output and put into its own file.
+# This script also delivers info on the length of the alignment versus the length of the initial diploid peptide/CDS,
+# which we can compare for the missing vs. conserved genes. These are written to a file called length_differences.txt.
+
+python3 parseCDS.py Bdistachyon_556_v3.2.cds_primaryTranscriptOnly.fa Bstacei_316_v1.1.cds_primaryTranscriptOnly.fa
+# Like parsePep.py, but splits up the coding sequence annotation file(s) from Phytozome.
+
+./runMACSE.sh
+# For each pseudogene/diploid CDS pair, run a codon-aware MACSE alignment. This program is designed for pseudogenes.
+# This SLURM batch script will need to be configured by the user.
+# Be careful: if you didn't provide enough time, some MACSE alignments will silently not run. 
+# Check whether the job timed out. You want it to finish early with time to spare. 
+
+rm candidatePseudogeneRegions/*.cds_macse_AA.fasta 
+# Remove extra files we don't need
+
+for fname in $( ls candidatePseudogeneRegions/*.cds_macse_NT.fasta ); do python3 reformatMACSE.py $fname ; done
+# Reformat MACSE output to be PAML-compatible. (Any stop codon (TGA, TAA, or TAG)
+# will break yn00. I am just changing these to ambiguous characters.)
+
+python3 makeCtlFile.py
+# PAML uses a config file called the 'control file'. This script makes one control file for the first pseudogene. 
+
+./run_yn00.sh
+# Run PAML's yn00 program iteratively, editing the control file before each new yn00 run.
+# Even hundreds of alignments should only take a couple of minutes.
+# IMPORTANT: edit line 16 of this script to reflect the path to the yn00 program.
+
+python3 extractdNdS.py
+# Get the omega or dN/dS values from the yn00 output files, and put them into one file. 
+# If we are working with missing genes, the gene IDs in this file (dNdSbyGene.txt) are diploid genes.
+# Note that yn00 produces several dN/dS value using several alternative methods. I chose one somewhat arbitrarily.
+# I believe a dN/dS of 99 usually means there were no non-synonymous substitutions.
+
+
+We also want to know about alignment length vs. diploid peptide length.
+If the alignment is much shorter than the diploid gene, it's more likely to be non-functional.
+extract_seq2_exonerate.py already made a file called length_differences.txt.
+This file just tells us length of diploid peptide (in BP) - length of pairwise alignment (in BP)
+for each alignment.
+
+We also want to know how many of the alignments contain premature termination codons (PTCs).
+To get PTC information from the exonerate alignments, do:
+for fname in $( ls candidatePseudogeneRegions/*.aln.p2g ); do python3 PTCs_from_exonerate.py $fname ; done
+This produces a file called PTCs_from_exonerate.txt.
+If none of the alignments contained a PTC, this file will be empty.
+(I found that the PTC information from exonerate was more reliable than from MACSE.)
+(I'm just recording whether a PTC occurs, not the number of occurrences.)
+
+##########################################################################################
+
+
+
+
+
+
+
+
+############# Get dN/dS relative to progenitor ortholog: fully conserved genes #############
+I am changing this protocol from older versions. 
+I think the most efficient way to do this is to get dN/dS values for all conserved genes,
+and then take random samples of those final values to generate a null distribution. 
+I don't have a script for the sampling since my approach in the paper was a bit different,
+but you can write your own script for sampling pretty easily.
+Note: I decided to limit our conserved syntenic orthogroups to those that have exactly one gene per genome.
+IMPORTANT: Run this in a separate directory from where you ran the pipeline for missing genes!
+I called mine 'conserved_genes/', but you can name it whatever you want.
+
+First, run bin_orthogroups.R. 
+If you already did this for the 'missing genes' pipeline, you don't need to run it again.
+Note: A tetraploid will have two copies of every fully conserved gene, so each fully 
+conserved syntenic orthogroup will appear twice in the output file conserved_gene_intervals.bed.
+
+Then do:
+bedtools sort -i conserved_gene_intervals.bed > conserved_gene_intervals.sorted.bed
+bedtools getfasta -fi BhybridumBhyb26_693_v2.0.softmasked.fa -bed conserved_gene_intervals.sorted.bed -nameOnly -fo conserved_gene_intervals.fa
+python3 parseRegionsFromFasta.py
+python3 parsePep.py Bdistachyon_556_v3.2.protein_primaryTranscriptOnly.fa Bstacei_316_v1.1.protein_primaryTranscriptOnly.fa
+python3 make_aliases.py 
+
+Next, run several scripts as a single job on a single thread.
+
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+#SBATCH --mem=4G
+#SBATCH -t 2:45:00
+#SBATCH -q genepool_shared
+#SBATCH -A plant
+#SBATCH -C haswell
+#SBATCH --mail-user=vstartaglio@lbl.gov
+#SBATCH --mail-type=end
+
+./runExonerate_p2g.sh # produces alignment files in candidatePseudogeneRegions/ 
+for fname in $( ls candidatePseudogeneRegions/*.aln.p2g ); do 
+python3 extract_seq2_exonerate.py $fname
+done
+python3 parseCDS.py Bdistachyon_556_v3.2.cds_primaryTranscriptOnly.fa Bstacei_316_v1.1.cds_primaryTranscriptOnly.fa
+
+
+The next part will be slower so let's run several batch jobs. Here's my script step2.sh:
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+#SBATCH --mem=4G
+#SBATCH -t 2:20:00 
+#SBATCH -q genepool_shared
+#SBATCH -A plant
+#SBATCH -C haswell
+#SBATCH --mail-user=vstartaglio@lbl.gov
+#SBATCH --mail-type=end
+
+module load python/3.9-anaconda-2021.11
+source activate /global/cfs/cdirs/plantbox/hybridum/software/exoxo
+
+for ind in $(seq $start $end); do
+if test -f "candidatePseudogeneRegions/${ind}.aln.seq2out"; then
+	macse -prog alignSequences -seq candidatePseudogeneRegions/${ind}.cds.fa -seq_lr candidatePseudogeneRegions/${ind}.aln.seq2out > MACSEoutput.txt
+fi
+done
+
+^Run this on the command line like so:
+sbatch --export=ALL,start=1,end=1000 step2.sh
+
+I ran these in chunks of 1,000 genes, several instances at a time:
+sbatch --export=ALL,start=1001,end=2000 step2.sh
+sbatch --export=ALL,start=2001,end=3000 step2.sh
+sbatch --export=ALL,start=3001,end=4000 step2.sh
+...
+sbatch --export=ALL,start=14001,end=15167 step2.sh
+
+Next, finish it off. Let's call this step3:
+
+#!/bin/bash
+#SBATCH -N 1
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks=1
+#SBATCH --mem=4G
+#SBATCH -t 2:00:00
+#SBATCH -q genepool_shared
+#SBATCH -A plant
+#SBATCH -C haswell
+#SBATCH --mail-user=vstartaglio@lbl.gov
+#SBATCH --mail-type=end
+
+module load python/3.9-anaconda-2021.11
+source activate /global/cfs/cdirs/plantbox/hybridum/software/exoxo
+
+rm candidatePseudogeneRegions/*_macse_AA.fasta #remove extra files we don't need
+for fname in $( ls candidatePseudogeneRegions/*_macse_NT.fasta ); do python3 changeStopsToAmbigCharsNEW.py $fname ; done
+python3 makeCtlFile.py
+./run_yn00.sh
+python3 extractdNdS.py
+
+Note that the output file, dNdSbyGene.txt, will list polyploid gene IDs for the conserved genes.
+You can always see which diploid genes these correspond to by checking conservedgenes.txt.
+
+See notes at the end of the 'missing genes' pipeline for information regarding alignment length vs. diploid peptide length and PTCs. 
+Remember: the PTC file will be empty if you have no alignments containing a PTC.
+#########################################################################
+
