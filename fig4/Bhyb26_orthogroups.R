@@ -1,3 +1,6 @@
+#I ran GENESPACE with just the two Bhyb26 subgenomes.
+#Now I am parsing the output to get 1:1 homeologs.
+
 library(ggplot2)
 library(data.table)
 
