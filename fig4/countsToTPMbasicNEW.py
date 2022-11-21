@@ -1,7 +1,10 @@
 """
 A fairly generalizable script for calculating TPMs from raw counts. 
 I used BBMap, a splice-aware aligner, to get a bam file and HTSeq to
-get counts. (HTSeq calculates total gene counts as the sum of exon counts.)
+get counts. HTSeq calculates total gene counts as the sum of exon counts.
+HTSeq params vary, but generally I do something like this:
+htseq-count -r pos -f bam -s yes -t gene -i ID SNOX.bbmap_sorted.bam ABR113.gff3 > SNOX_HTScounts.txt
+
 This script is designed to parse the HTSeq output file.
 Also requires a separate file with two columns: the gene ID, and the length of the primary transcript.
 Currently I am reading two such files, one for each Bhyb26 subgenome, but this could easily
