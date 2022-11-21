@@ -1,3 +1,8 @@
+"""
+A super simple script to parse a Phytozome primary transcript file and
+produce files that will serve as inputs for countsToTPMbasicNEW.py.
+"""
+
 import glob
 
 def uniquify(seq):
