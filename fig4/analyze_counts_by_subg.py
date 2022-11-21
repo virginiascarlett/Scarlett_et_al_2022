@@ -18,14 +18,12 @@ with open(inF, 'r') as countsF:
             countsDict[geneID] = value
 
 gene2subg = {} #Dictionary with key=geneID and value=subgenome
-#with open('BhybridumBhyb26v2.1.gene_exons.gff3', 'r') as gff:
-#For analyzing old ABR113 RNA-seq data:
-with open('/global/cscratch1/sd/vstartag/RNA_Seq_2018/refGenomes/Bhybridum_plus_plastid.gff3', 'r') as gff:
+with open('BhybridumBhyb26v2.1.gene_exons.gff3', 'r') as gff:
 	read = gff.readlines()
 	#ABR113:
-	for n in range(3, len(read)):
-	#Bhyb26:
-	#for n in range(6, len(read)):
+	#for n in range(3, len(read)):
+	#Bhyb26 gff has a longer header:
+	for n in range(6, len(read)):
 		L = read[n].split('\t')
 		if L[2] == 'gene':
 			geneID = L[8].split(';')[0].lstrip('ID=')
@@ -41,24 +39,19 @@ for gene, count in countsDict.items():
 		BhScounts += count
 
 BhD_total_Tr_lengths = 0
-#For analyzing old ABR113 RNA-seq data:
-with open('/global/cscratch1/sd/vstartag/RNA_Seq_2018/refGenomes/geneLengths/BhDprimTrlengths.txt', 'r') as BhDlens:
-#with open('BhDprimTrlengths.txt', 'r') as BhDlens:
+with open('BhDprimTrlengths.txt', 'r') as BhDlens:
     for line in BhDlens.readlines():
         BhD_total_Tr_lengths += int(line.split('\t')[1].strip('\n'))
 
 BhS_total_Tr_lengths = 0
-#For analyzing old ABR113 RNA-seq data:
-with open('/global/cscratch1/sd/vstartag/RNA_Seq_2018/refGenomes/geneLengths/BhSprimTrlengths.txt', 'r') as BhSlens:
-#with open('BhSprimTrlengths.txt', 'r') as BhSlens:
+with open('BhSprimTrlengths.txt', 'r') as BhSlens:
     for line in BhSlens.readlines():
         BhS_total_Tr_lengths += int(line.split('\t')[1].strip('\n'))
 
-#THIS PART IS MISLEADING. YOU CAN'T COMPARE TRANSCRIPTOME SIZE IN BP VS. COUNTS, BECAUSE COUNTS DON'T ACCOUNT FOR GENE LENGTH
-#COMPARE NUMBER OF GENES TO NUMBER OF COUNTS INSTEAD
-#print("{}% of the (primary) transcriptome is from BhD transcripts.".format(
-#	round(BhD_total_Tr_lengths/(BhS_total_Tr_lengths+BhD_total_Tr_lengths)*100, 3)
-#	))
+
+print("{}% of the (primary) transcriptome is from BhD transcripts.".format(
+	round(BhD_total_Tr_lengths/(BhS_total_Tr_lengths+BhD_total_Tr_lengths)*100, 3)
+	))
 print("{}% of counts are from BhD transcripts.".format(
 	round(BhDcounts/(BhDcounts+BhScounts)*100, 3)
 	))
