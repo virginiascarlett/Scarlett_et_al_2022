@@ -1,6 +1,11 @@
 """
-Note that this is meant for gene level counts. My pipeline uses bbtools, a splice-aware aligner, and HTSeq, 
-which calculates total gene counts as the sum of exon counts.
+A fairly generalizable script for calculating TPMs from raw counts. 
+I used BBMap, a splice-aware aligner, to get a bam file and HTSeq to
+get counts. (HTSeq calculates total gene counts as the sum of exon counts.)
+This script is designed to parse the HTSeq output file.
+Also requires a separate file with two columns: the gene ID, and the length of the primary transcript.
+Currently I am reading two such files, one for each Bhyb26 subgenome, but this could easily
+be adapted to suit your system.
 
 Workflow:
 CPB = counts per base, or countvalue/genelength for a given gene
@@ -10,8 +15,9 @@ TPM = geneFraction x 10^6
 TPM = [GOI_count / GOI_length] / [total [GOI_count / GOI_length] for all genes * 1/1,000,000]
     = CPB / sumCPBs * 1,000,000
 
-run with counts file and 'library name' as command line arguments like so:
+run with counts file and library name as command line arguments like so:
 python3 countsToTPMbasicNEW.py 1_HTScounts.txt 1
+python3 countsToTPMbasicNEW.py cntResultsAAB.txt AAB
 """
 
 import sys
