@@ -22,8 +22,3 @@ and a new TE gff e.g. ABR113_RepeatMasker_TElib.clean.gff.
 This script will also produce a TSV file with family classifications, e.g.
 ABR113_TElib_McClintockfams.tsv. Then I ran mcclintock with a job array as in
 /global/cscratch1/sd/vstartag/jacob_internship/Bhybridum/mcclint.sh
-
-To run on cori, use this conda environment:
-module load python/3.9-anaconda-2021.11
-source activate /global/cfs/cdirs/plantbox/hybridum/software/mcclintock
-
