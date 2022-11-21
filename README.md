@@ -1,5 +1,9 @@
 # Scarlett_et_al_2022
-Here you will find the scripts that were used in Scarlett et al. "Multiple origins, one evolutionary trajectory: gradual evolution characterizes distinct lineages of allotetraploid Brachypodium" Genetics, 2022, iyac146, https://doi.org/10.1093/genetics/iyac146. This repository includes the scripts that produced the figures, and where possible, also includes the analysis pipelines. See the data availability section of the paper for the links to the raw data themselves.
+Here you will find the scripts that were used in: 
+
+Scarlett et al. "Multiple origins, one evolutionary trajectory: gradual evolution characterizes distinct lineages of allotetraploid Brachypodium" Genetics, 2022, iyac146, https://doi.org/10.1093/genetics/iyac146. 
+
+This repository includes the scripts that produced the figures, and where possible, also includes the analysis pipelines. See the data availability section of the paper for the links to the raw data themselves.
 
 Contents:
 
