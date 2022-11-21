@@ -13,7 +13,7 @@ fig2: Code to produce GENESPACE dotplots
 
 fig3: Code to identify putative pseudogenes and analyze their characteristics. There are two directories: one with the scripts I actually used, and one with tidier scripts and better documentation. If you wish to adapt this protocol for your own needs, use the tidied version. This protocol was designed for tetraploids with well-defined subgenomes and either one or two progenitors.
 
-fig4: Code to map RNA-seq reads with BBmap, analyze the counts, calculate TPMs, and plot bar charts. See the comments at the top of countsToTPMbasicNEW.py for an example HTSeq call as well. 
+fig4: Code to map RNA-seq reads with BBmap, analyze the counts, calculate TPMs, and plot bar charts. See table1/ for an example HTSeq call as well. 
 
 fig5: A pretty messy directory containing code for (1) getting binned genome stats (e.g. gene density) and plotting them with circos, and (2) running my TE annotation pipeline and plotting some of the results. The scripts directly under fig5/ are for plotting the bar charts and the insertion time scatterplot. 
 
@@ -25,4 +25,4 @@ suppfigS2: Code for visualizing the locations of putative pseudogenes on a Bhyb2
 
 suppfigS3: Code for running TEMP2 using the McClintock wrapper
 
-table: Code for getting TPMs for pseudogenes (see note under suppfigS2), and some general RNA-seq scripts. This is table 1 in the text, not supplementary table S1. Several of the columns in that supplementary table were calculated using fig5/hybridum_genes_distance_to_TEs.R.
+table1: Code for getting TPMs for pseudogenes (see note under suppfigS2), and some general RNA-seq scripts. This is table 1 in the text, not supplementary table S1. Several of the columns in that supplementary table were calculated using fig5/hybridum_genes_distance_to_TEs.R.
