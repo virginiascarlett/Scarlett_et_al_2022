@@ -1,6 +1,9 @@
 """
 See what proportion of total counts comes from each subgenome.
-Run after running getGeneLengths.py.
+Run after running BBmap, HTSeq, and getGeneLengths.py.
+HTSeq params vary, but generally I do something like this:
+htseq-count -r pos -f bam -s yes -t gene -i ID SNOX.bbmap_sorted.bam ABR113.gff3 > SNOX_HTScounts.txt
+
 Include counts file as a command line arg like so:
 python3 analyze_counts_by_subg.py 1_HTScounts.txt
 """
