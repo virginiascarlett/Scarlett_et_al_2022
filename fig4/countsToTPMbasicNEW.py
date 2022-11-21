@@ -5,7 +5,7 @@ get counts. (HTSeq calculates total gene counts as the sum of exon counts.)
 This script is designed to parse the HTSeq output file.
 Also requires a separate file with two columns: the gene ID, and the length of the primary transcript.
 Currently I am reading two such files, one for each Bhyb26 subgenome, but this could easily
-be adapted to suit your system.
+be adapted to suit your system. I used getGeneLengths.py to produce these files.
 
 Workflow:
 CPB = counts per base, or countvalue/genelength for a given gene
